@@ -1,0 +1,203 @@
+---
+title: 'Practical Machine Learning : Course Project'
+author: "Madhaveswer Gentela"
+date: "Saturday, August 22, 2015"
+output: html_document
+---
+
+Goal of the project is to predict how well people performed the weight lifting exercise using dataset provided by  [Weight Lifting Exercises Dataset](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises)
+
+## Background
+Using devices such as _Jawbone Up, Nike FuelBand, and Fitbit_ it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify _how well they do it._ In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website [Weight Lifting Exercises Dataset](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises)
+
+## Assumptions
+* Did not consider any Imputing, such as kImpute to fill _NA_ values.
+* Considered only 3 models within the scope of this project.
+    + classification tree from ctree package in R
+    + random forest tree from randomforest package in R
+    + rpart model from rpart package in R
+* Considered k fold cross validation within the scope of this project.
+
+```{r, message=FALSE, warning=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+
+# download training data set
+#trainURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+trainFile <- "pml-training.csv"
+#download.file(trainURL, trainFile)
+
+# download test data set
+#testURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+testFile <- 'pml-testing.csv'
+#download.file(testURL, testFile)
+
+# read data sets into memory, set NA for missing and NAN values. 
+training.orig <- read.csv(trainFile, na.strings=c("NA","#DIV/0!",""))
+
+testing.orig <- read.csv(testFile, na.strings=c("NA","#DIV/0!",""))
+
+# set the seed to reproduce the results. 
+set.seed(45678)
+
+# cleaning.
+## assign it to short variable names for convenience.
+t <- training.orig
+test <- testing.orig
+
+# Remove all columns that have any NA values.
+t.1 <- t[, colSums(is.na(t)) == 0]
+
+# Remove meta data columns, with following names. 
+m_names <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")
+# corresponding column numbers
+m_num <- c(1, 2, 3, 4, 5, 6, 7)
+# remove these columns from t.1
+t.2 <- t.1[,-m_num]
+
+```
+
+## Exploratory Data Analysis and Cleaning
+
+* Examined the raw data and removed all columns with _NA_, _#DIV/0!_, and _Empty Values_
+* Did not consider any imputing data, such as _knnImpute_ for missing values.
+* tested for near zero variance. Did not find any columns after removing _NA_ columns.
+
+```{r, message=FALSE, warning=FALSE}
+
+# check if there are any near zero variance columns or close to constant values.
+nzvData <- nearZeroVar(t.2)
+nzvData
+# we had zero columns with zero variance.
+
+```
+
+* In selecting features, considered all columns remaining after removing columns with _NA_, except for following meta or string data. Actually I considered with and with out and there is not much difference in final accuracy of models. For this report, I am not considering them.
+    + Columns: _X_, _user\_name_, _raw\_timestamp\_part\_1_, _raw\_timestamp\_part\_2_, _cvtd\_timestamp_, _new\_window_, _num\_window_
+
+
+```{r, message=FALSE, warning=FALSE}
+
+# Now makes sure test data set that is used for submitting answers contain same columns
+n <- colnames(t.2)
+test.1 <- test[,n[-53]]
+
+# check if class of each column is same. 
+test.2 <- test.1
+
+x <- lapply(t.2, class)
+y <- lapply(test.2, class)
+
+# all.equal command shows following columns to be different. 
+# all.equal(y, x[-53])
+#[1] "Component "magnet_dumbbell_z": 1 string mismatch"
+#[2] "Component "magnet_forearm_y": 1 string mismatch" 
+#[3] "Component "magnet_forearm_z": 1 string mismatch" 
+# not sure if numeric class is same as integer. But change it to make sure we don't have problems with predict function.
+test.2[,'magnet_dumbbell_z'] <- as.numeric(test.2[,'magnet_dumbbell_z'])
+test.2[,'magnet_forearm_y'] <- as.numeric(test.2[,'magnet_forearm_y'])
+test.2[,'magnet_forearm_z'] <- as.numeric(test.2[,'magnet_forearm_z'])
+
+```
+
+## Modeling using caret package
+
+Using kfold (10 fold) cross validation for tuning the models and this cross validation is used to select the right model for the current project.
+
+
+```{r, message=FALSE, warning=FALSE}
+
+# Used kfold (10 folds) cross validatoin for all models to tune training set.
+
+# specify cross validation option using trainControl to train function.
+ctrl <- trainControl(method = "cv")
+```
+
+### Classification Tree (ctree package) model
+
+Run the classification tree model from ctree package using _train_ function from caret package of R. Show the results of cross validation and accuracy plot.
+
+```{r, message=FALSE, warning=FALSE}
+# ctree model
+ctreeFit <- train(classe ~ ., data = t.2, method = "ctree", trControl = ctrl)
+
+# see output results
+ctreeFit
+
+# plot accuracy plot to see which model is better
+plot(ctreeFit)
+```
+
+### Classification Tree (rpart package) model
+
+Run the classification tree model from rpart package using _train_ function from caret package of R. Show the results of cross validation and accuracy plot.
+
+```{r, message=FALSE, warning=FALSE}
+# Rpart model
+rpartFit <- train(classe ~ ., data = t.2, method = "rpart", trControl = ctrl)
+
+# see output
+rpartFit
+
+# plot accuracy plot to see which model is better
+plot(rpartFit)
+
+```
+
+### Random Forest Tree Model (randomforest package)
+
+Run the Rando Forest tree model from randomforest package using _train_ function from caret package of R. Show the results of cross validation and accuracy plot.
+
+```{r, message=FALSE, warning=FALSE}
+# rf model
+randomForestFit <- train(classe ~ ., data = t.2, method = "rf", trControl = ctrl)
+
+# see output
+randomForestFit
+
+# plot accuracy plot to see which model is better
+plot(randomForestFit)
+
+```
+
+Out of sample error is measured using accuracy and kappa of cross validation results show in the R output of train function. Why a particular model is chose after the tuning 10 folds of kfold cross validation.
+
+## Summary
+Based on Accuracy of cross validation results of each model, it is obvious that randomForest model performed better. Hence this model is chosen for predicting test sample.
+
+## Prediction of test sample results
+
+After chosing randomforest model, used following R code perform test data prediction and used results to submit to Coursera as a second part of assignment. 
+
+```{r, message=FALSE, warning=FALSE}
+
+# Use pretict function to predict.
+predRandomForestFit <- predict(randomForestFit, test.2)
+
+# output results
+predRandomForestFit
+
+```
+
+## Generating Files using function provided
+
+Generate files using function provided by instructor of the course. 
+
+```{r, message=FALSE, warning=FALSE}
+
+# Use the function provided by coursera to write files for submission.
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predRandomForestFit)
+
+```
