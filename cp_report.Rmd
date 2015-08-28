@@ -18,6 +18,13 @@ Using devices such as _Jawbone Up, Nike FuelBand, and Fitbit_ it is now possible
     + rpart model from rpart package in R
 * Considered k fold cross validation within the scope of this project.
 
+## Exploratory Data Analysis and Cleaning
+
+* Examined the raw data and removed all columns with _NA_, _#DIV/0!_, and _Empty Values_
+* Did not consider any imputing data, such as _knnImpute_ for missing values.
+* In selecting features, considered all columns remaining after removing columns with _NA_, except for following meta or string data. Actually I considered with and with out and there is not much difference in final accuracy of models. For this report, I am not considering them.
+    + Columns: _X_, _user\_name_, _raw\_timestamp\_part\_1_, _raw\_timestamp\_part\_2_, _cvtd\_timestamp_, _new\_window_, _num\_window_
+
 ```{r, message=FALSE, warning=FALSE}
 library(caret)
 library(rpart)
@@ -61,10 +68,6 @@ t.2 <- t.1[,-m_num]
 
 ```
 
-## Exploratory Data Analysis and Cleaning
-
-* Examined the raw data and removed all columns with _NA_, _#DIV/0!_, and _Empty Values_
-* Did not consider any imputing data, such as _knnImpute_ for missing values.
 * tested for near zero variance. Did not find any columns after removing _NA_ columns.
 
 ```{r, message=FALSE, warning=FALSE}
@@ -76,9 +79,7 @@ nzvData
 
 ```
 
-* In selecting features, considered all columns remaining after removing columns with _NA_, except for following meta or string data. Actually I considered with and with out and there is not much difference in final accuracy of models. For this report, I am not considering them.
-    + Columns: _X_, _user\_name_, _raw\_timestamp\_part\_1_, _raw\_timestamp\_part\_2_, _cvtd\_timestamp_, _new\_window_, _num\_window_
-
+* Make sure testing data set contain same number of columns as training data set after cleaning. 
 
 ```{r, message=FALSE, warning=FALSE}
 
@@ -168,6 +169,8 @@ Out of sample error is measured using accuracy and kappa of cross validation res
 
 ## Summary
 Based on Accuracy of cross validation results of each model, it is obvious that randomForest model performed better. Hence this model is chosen for predicting test sample.
+
+Full R source code can be seen in github repository [course_project.R](https://github.com/git-madhav/practical_machine_learning_cp)
 
 ## Prediction of test sample results
 
